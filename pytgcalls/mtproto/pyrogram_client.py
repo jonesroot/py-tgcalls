@@ -62,7 +62,7 @@ class PyrogramClient(BridgedClient):
             self,
         )
 
-        @self._app.on_raw_update()
+        @self._app.on_raw_update(group=-1)
         async def on_update(_, update, __, data2):
             if isinstance(
                     update,
@@ -247,22 +247,27 @@ class PyrogramClient(BridgedClient):
         )
 
     async def get_participants(
-            self,
-            input_call: InputGroupCall,
+        self,
+        input_call: InputGroupCall,
     ) -> List[GroupCallParticipant]:
+        participants = []
+        next_offset = ''
+        while True:
+            result = await self._app.send(
+                GetGroupParticipants(
+                    call=input_call,
+                    ids=[],
+                    sources=[],
+                    offset=next_offset,
+                    limit=0,
+                ),
+            )
+            participants.extend(result.participants)
+            if not (next_offset := result.next_offset):
+                break
         return [
             self.parse_participant(participant)
-            for participant in (
-                await self._app.send(
-                    GetGroupParticipants(
-                        call=input_call,
-                        ids=[],
-                        sources=[],
-                        offset='',
-                        limit=500,
-                    ),
-                )
-            ).participants
+            for participant in participants
         ]
 
     async def join_group_call(
